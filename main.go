@@ -63,6 +63,15 @@ func main() {
 		collector.Visit(nextPage)
 	})
 
+	//ALL ABOUT DETAIL HOTEL PAGE
+
+	collector.OnHTML(".page", func(h *colly.HTMLElement) {
+		hotelName := h.ChildText("h1")
+		fmt.Println(hotelName)
+	})
+
+	//END
+
 	collector.OnResponse(func(r *colly.Response) {
 		fmt.Println(r.StatusCode)
 	})
