@@ -133,7 +133,7 @@ func getHotelDetails(url string) {
 			} else {
 				hotel.reviewerLocation = ""
 			}
-			hotel.reviewerRating = h.ChildAttr("div.emWez.F1 > span", "class")
+			hotel.reviewerRating = h.ChildAttr("div.emWez.F1 > span", "class")[24:][:1] + "." + h.ChildAttr("div.emWez.F1 > span", "class")[24:][1:]
 			h.ForEach("span.euPKI._R.Me.S4.H3", func(i int, h *colly.HTMLElement) {
 				stayTime := h.Text
 				if stayTime != "" {
@@ -154,17 +154,17 @@ func getHotelDetails(url string) {
 
 		}
 
-		fmt.Println(hotel.hotelName)
+		//fmt.Println(hotel.hotelName)
 
-		nextUrl := h.ChildAttr("a.ui_button.nav.next.primary", "href")
-		//fmt.Println(hotel.tripType)
+		//nextUrl := h.ChildAttr("a.ui_button.nav.next.primary", "href")
+		fmt.Println(hotel.reviewerRating)
 
-		csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
-			hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
-			hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
-		writer.Write(csvRow)
+		// csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
+		// 	hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
+		// 	hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
+		// writer.Write(csvRow)
 
-		h.Request.Visit(nextUrl)
+		//h.Request.Visit(nextUrl)
 
 	})
 
