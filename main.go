@@ -83,13 +83,12 @@ func getHotelDetails(url string) {
 	defer writer.Flush()
 
 	//Create csv headers
-	headers := []string{"hotelName", "hotelAddress", "hotelRatingLabel", "hotelRating", "hotelReviewCount", "hotelDesc", "reviewerName", "reviewerLocation", "reviewerStayTime",
+	headers := []string{"hotelName", "hotelAddress", "hotelRatingLabel", "hotelRating", "hotelReviewCount", "reviewerName", "reviewerLocation", "reviewerStayTime",
 		"reviewerCommentTitle", "reviewerCommentDescrition", "tripType", "reviewerRating"}
 	writer.Write(headers)
 
 	//Create colly collector and allow only tripadvisor url
 	collector := colly.NewCollector(
-		colly.Async(true),
 		colly.UserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11"),
 		colly.CacheDir("./cache"),
 	)
@@ -113,30 +112,47 @@ func getHotelDetails(url string) {
 		//Initiate Hotel Struct
 		hotel := HotelInfo{}
 
-		hotel.hotelName = h.ChildText("h1")
-		hotel.hotelAddress = h.ChildText("span.ceIOZ.yYjkv")
-		hotel.hotelOverallRating = h.ChildText("span.bvcwU.P")
-		hotel.hotelOverallRatingLabel = h.ChildText("div.cNJsa")
-		hotel.hotelOverallReviewCount = h.ChildText("span.btQSs.q.Wi.z.Wc")
-		hotel.hotelOverallDescription = h.ChildText("div.pIRBV._T")
+		reviewerCommentTitle := h.ChildText("div.fpMxB.MC._S.b.S6.H5._a > a.fCitC > span > span")
+		reviewerCommentDescrition := h.ChildText("div.duhwe._T.bOlcm.dMbup > div.pIRBV._T > q > span")
 
-		hotel.reviewerName = h.ChildAttr("div.bcaHz > span > a.ui_header_link.bPvDb", "href")
-		hotel.reviewerLocation = h.ChildText("span.default.ShLyt.small")
-		hotel.reviewerRating = h.ChildAttr("div.emWez.F1 > span", "class")
-		hotel.reviewerCommentTitle = h.ChildText("div.fpMxB.MC._S.b.S6.H5._a > a > span > span")
-		hotel.reviewerCommentDescrition = h.ChildText("div.pIRBV._T > q > span")
-		hotel.reviewerStayTime = h.ChildText("span.euPKI._R.Me.S4.H3")
-		hotel.tripType = h.ChildText("span.eHSjO._R.Me")
+		if reviewerCommentTitle != "" || reviewerCommentDescrition != "" {
+			hotel.hotelName = h.ChildText("h1")
+			hotel.hotelAddress = h.ChildText("div.ApqWZ.S4.H3.f.u.eEkxn > span.eWZDY._S.eCdbd.yYjkv > span.ceIOZ.yYjkv")
+			//hotel.hotelAddress = h.ChildText("span.ceIOZ.yYjkv")
+			hotel.hotelOverallRating = h.ChildText("span.bvcwU.P")
+			hotel.hotelOverallRatingLabel = h.ChildText("div.cNJsa")
+			hotel.hotelOverallReviewCount = h.ChildText("span.btQSs.q.Wi.z.Wc")
+			hotel.hotelOverallDescription = h.ChildText("div.pIRBV._T")
+
+			hotel.reviewerName = h.ChildAttr("div.bcaHz > span > a.ui_header_link.bPvDb", "href")[9:]
+			hotel.reviewerCommentTitle = reviewerCommentTitle
+			hotel.reviewerCommentDescrition = reviewerCommentDescrition
+			reviewerLocation := h.ChildText("span.default.ShLyt.small")
+			if reviewerLocation != "" {
+				hotel.reviewerLocation = reviewerLocation[9:]
+			} else {
+				hotel.reviewerLocation = ""
+			}
+			hotel.reviewerRating = h.ChildAttr("div.emWez.F1 > span", "class")
+			hotel.reviewerStayTime = h.ChildText("span.euPKI._R.Me.S4.H3")
+			tripType := h.ChildText("span.eHSjO._R.Me")
+			if tripType != "" {
+				hotel.tripType = tripType[11:]
+			} else {
+				hotel.tripType = ""
+			}
+
+		}
 
 		//fmt.Println(hotel.hotelName)
 
 		nextUrl := h.ChildAttr("a.ui_button.nav.next.primary", "href")
-		//fmt.Println(hotel.reviewerCommentTitle)
+		fmt.Println(hotel.reviewerStayTime)
 
-		csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount, hotel.hotelOverallDescription,
-			hotel.reviewerName[9:], hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
-			hotel.reviewerCommentDescrition, hotel.tripType[10:], hotel.reviewerRating}
-		writer.Write(csvRow)
+		// csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
+		// 	hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
+		// 	hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
+		// writer.Write(csvRow)
 
 		h.Request.Visit(nextUrl)
 
