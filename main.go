@@ -127,12 +127,16 @@ func getHotelDetails(url string) {
 			hotel.reviewerName = h.ChildAttr("div.bcaHz > span > a.ui_header_link.bPvDb", "href")[9:]
 			hotel.reviewerCommentTitle = reviewerCommentTitle
 			hotel.reviewerCommentDescrition = reviewerCommentDescrition
-			reviewerLocation := h.ChildText("span.default.ShLyt.small")
-			if reviewerLocation != "" {
-				hotel.reviewerLocation = reviewerLocation[9:]
-			} else {
-				hotel.reviewerLocation = ""
-			}
+			//reviewerLocation := h.ChildText("span.default.ShLyt.small")
+			h.ForEach("span.default.ShLyt.small", func(i int, h *colly.HTMLElement) {
+				location := h.Text
+				if location != "" {
+					hotel.reviewerLocation = location
+				} else {
+					hotel.reviewerLocation = ""
+				}
+			})
+
 			hotel.reviewerRating = h.ChildAttr("div.emWez.F1 > span", "class")[24:][:1] + "." + h.ChildAttr("div.emWez.F1 > span", "class")[24:][1:]
 			h.ForEach("span.euPKI._R.Me.S4.H3", func(i int, h *colly.HTMLElement) {
 				stayTime := h.Text
@@ -154,17 +158,17 @@ func getHotelDetails(url string) {
 
 		}
 
-		//fmt.Println(hotel.hotelName)
+		fmt.Println(hotel.hotelName)
 
-		//nextUrl := h.ChildAttr("a.ui_button.nav.next.primary", "href")
-		fmt.Println(hotel.reviewerRating)
+		nextUrl := h.ChildAttr("a.ui_button.nav.next.primary", "href")
+		//fmt.Println(hotel.hotelAddress)
 
-		// csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
-		// 	hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
-		// 	hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
-		// writer.Write(csvRow)
+		csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
+			hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
+			hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
+		writer.Write(csvRow)
 
-		//h.Request.Visit(nextUrl)
+		h.Request.Visit(nextUrl)
 
 	})
 
