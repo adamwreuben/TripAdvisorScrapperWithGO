@@ -69,8 +69,11 @@ func scrapHotelUrlFromCSV() {
 
 func getHotelDetails(url string) {
 
+	//Initiate Hotel Struct
+	hotel := HotelInfo{}
+
 	//Create csv file
-	file, err := os.Create("hotel.csv")
+	file, err := os.OpenFile("hotel.csv", os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 
 	if err != nil {
 		log.Fatal(err)
@@ -80,10 +83,10 @@ func getHotelDetails(url string) {
 
 	//Create csv writer
 	writer := csv.NewWriter(file)
-	defer writer.Flush()
+	//defer writer.Flush()
 
 	//Create csv headers
-	headers := []string{"hotelName", "hotelAddress", "hotelRatingLabel", "hotelRating", "hotelReviewCount", "reviewerName", "reviewerLocation", "reviewerStayTime",
+	headers := []string{"hotelName", "hotelLocation", "hotelRatingLabel", "hotelRating", "hotelReviewCount", "reviewerName", "reviewerLocation", "reviewerStayTime",
 		"reviewerCommentTitle", "reviewerCommentDescrition", "tripType", "reviewerRating"}
 	writer.Write(headers)
 
@@ -98,7 +101,7 @@ func getHotelDetails(url string) {
 		// Filter domains affected by this rule
 		DomainGlob: "tripadvisor.com/*",
 		// Set a delay between requests to these domains
-		Delay: 1 * time.Second,
+		Delay: 100 * time.Second,
 		// Add an additional random delay
 		RandomDelay: 1 * time.Second,
 	})
@@ -109,64 +112,51 @@ func getHotelDetails(url string) {
 	})
 
 	collector.OnHTML(".page", func(h *colly.HTMLElement) {
-		//Initiate Hotel Struct
-		hotel := HotelInfo{}
+		hotel.hotelName = h.ChildText("h1")
+		hotel.hotelAddress = h.ChildText("div.ApqWZ.S4.H3.f.u.eEkxn > span.eWZDY._S.eCdbd.yYjkv > span.ceIOZ.yYjkv")
+		hotel.hotelOverallRating = h.ChildText("span.bvcwU.P")
+		hotel.hotelOverallRatingLabel = h.ChildText("div.cNJsa")
+		hotel.hotelOverallReviewCount = h.ChildText("span.btQSs.q.Wi.z.Wc")
+		hotel.hotelOverallDescription = h.ChildText("div.pIRBV._T")
 
-		reviewerCommentTitle := h.ChildText("div.fpMxB.MC._S.b.S6.H5._a > a.fCitC > span > span")
-		reviewerCommentDescrition := h.ChildText("div.duhwe._T.bOlcm.dMbup > div.pIRBV._T > q > span")
+		h.ForEach("div[data-test-target=reviews-tab]", func(i int, h *colly.HTMLElement) {
+			// fmt.Print(reviewerCommentTitle)
 
-		if reviewerCommentTitle != "" || reviewerCommentDescrition != "" {
-			hotel.hotelName = h.ChildText("h1")
-			hotel.hotelAddress = h.ChildText("div.ApqWZ.S4.H3.f.u.eEkxn > span.eWZDY._S.eCdbd.yYjkv > span.ceIOZ.yYjkv")
-			//hotel.hotelAddress = h.ChildText("span.ceIOZ.yYjkv")
-			hotel.hotelOverallRating = h.ChildText("span.bvcwU.P")
-			hotel.hotelOverallRatingLabel = h.ChildText("div.cNJsa")
-			hotel.hotelOverallReviewCount = h.ChildText("span.btQSs.q.Wi.z.Wc")
-			hotel.hotelOverallDescription = h.ChildText("div.pIRBV._T")
+			h.ForEach("div.cWwQK.MC.R2.Gi.z.Z.BB.dXjiy", func(i int, h *colly.HTMLElement) {
+				hotel.reviewerName = h.ChildText("div.xMxrO > div.bJaRP._Z.o > div.bcaHz > span > a.ui_header_link.bPvDb")
+				hotel.reviewerCommentTitle = h.ChildText("div.cqoFv._T > div.fpMxB.MC._S.b.S6.H5._a > a.fCitC > span > span")
+				hotel.reviewerCommentDescrition = h.ChildText("div.dovOW > div.duhwe._T.bOlcm.dMbup > div.pIRBV._T > q > span")
+				hotel.reviewerLocation = h.ChildText("div.xMxrO > div.bJaRP._Z.o > div.BZmsN > span.fSiLz > span.default.ShLyt.small")
+				hotel.reviewerRating = h.ChildAttr("div.cqoFv._T > div.elFlG.f.O > div.emWez.F1 > span", "class")[24:][:1] + "." + h.ChildAttr("div.emWez.F1 > span", "class")[24:][1:]
+				h.ForEach("div.cqoFv._T > div.dovOW > div.bzjij > span.euPKI._R.Me.S4.H3", func(i int, h *colly.HTMLElement) {
+					stayTime := h.Text
+					if stayTime != "" {
+						hotel.reviewerStayTime = h.Text[14:]
+					} else {
+						hotel.reviewerStayTime = ""
+					}
+				})
 
-			hotel.reviewerName = h.ChildAttr("div.bcaHz > span > a.ui_header_link.bPvDb", "href")[9:]
-			hotel.reviewerCommentTitle = reviewerCommentTitle
-			hotel.reviewerCommentDescrition = reviewerCommentDescrition
-			//reviewerLocation := h.ChildText("span.default.ShLyt.small")
-			h.ForEach("span.default.ShLyt.small", func(i int, h *colly.HTMLElement) {
-				location := h.Text
-				if location != "" {
-					hotel.reviewerLocation = location
-				} else {
-					hotel.reviewerLocation = ""
-				}
-			})
-
-			hotel.reviewerRating = h.ChildAttr("div.emWez.F1 > span", "class")[24:][:1] + "." + h.ChildAttr("div.emWez.F1 > span", "class")[24:][1:]
-			h.ForEach("span.euPKI._R.Me.S4.H3", func(i int, h *colly.HTMLElement) {
-				stayTime := h.Text
-				if stayTime != "" {
-					hotel.reviewerStayTime = h.Text[14:]
-				} else {
-					hotel.reviewerStayTime = ""
-				}
-			})
-			//tripType := h.ChildText("span.eHSjO._R.Me")
-			h.ForEach("span.eHSjO._R.Me", func(i int, h *colly.HTMLElement) {
-				tripType := h.Text
+				tripType := h.ChildText("span.eHSjO._R.Me")
 				if tripType != "" {
 					hotel.tripType = tripType[11:]
 				} else {
 					hotel.tripType = ""
 				}
+
+				csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
+					hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
+					hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
+
+				writer.Write(csvRow)
+
 			})
 
-		}
-
+		})
 		fmt.Println(hotel.hotelName)
 
 		nextUrl := h.ChildAttr("a.ui_button.nav.next.primary", "href")
-		//fmt.Println(hotel.hotelAddress)
-
-		csvRow := []string{hotel.hotelName, hotel.hotelAddress, hotel.hotelOverallRatingLabel, hotel.hotelOverallRating, hotel.hotelOverallReviewCount,
-			hotel.reviewerName, hotel.reviewerLocation, hotel.reviewerStayTime, hotel.reviewerCommentTitle,
-			hotel.reviewerCommentDescrition, hotel.tripType, hotel.reviewerRating}
-		writer.Write(csvRow)
+		//fmt.Println(hotel)
 
 		h.Request.Visit(nextUrl)
 
